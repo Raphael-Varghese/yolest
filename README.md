@@ -2,6 +2,11 @@
 
 An AI chat platform built by high school students at Stanton College Prep. YOLEST features user authentication, multiple AI personalities, tool use, image generation, and both local and cloud model support.
 
+## DUE TO A BUG IN THE SCRIPT, YOU CANNOT USE THE SERVICE IF YOU DONT HAVE THE API KEY. SO ILL GIVE IT TO YOU(NOT A *REAL* API KEY, JUST A RANDOM SET OF NUMBERS AND LETTERS
+
+```api-key
+```
+
 ---
 
 ## What is YOLEST?
