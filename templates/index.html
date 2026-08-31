@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLEST</title>
+    <link rel="icon" href="/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/contrib/auto-render.min.js"></script>
+    <style>
+        /* Model selector styles */
+        .model-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: 12px;
+        }
+        .model-selector label {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+        .model-dropdown {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 13px;
+            padding: 6px 10px;
+            outline: none;
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        .model-dropdown:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        .model-dropdown option {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        .model-dropdown:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .model-badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .model-badge.local {
+            background: rgba(16, 163, 127, 0.15);
+            color: var(--accent);
+        }
+        .model-badge.cloud {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+        }
+        /* No API key checkbox */
+        .checkbox-field {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+        }
+        .checkbox-field input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+        .checkbox-field label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            user-select: none;
+        }
+        .api-key-field.hidden {
+            display: none !important;
+        }
+        .api-key-note {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+        /* Thinking indicator styles */
+        .thinking-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            margin: 8px 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            width: fit-content;
+            animation: thinkingFadeIn 0.3s ease;
+        }
+        .thinking-spinner {
+            width: 16px;
+            height: 16px;
+            color: var(--accent);
+            animation: thinkingSpin 1.5s linear infinite;
+            flex-shrink: 0;
+        }
+        .thinking-spinner svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .thinking-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            transition: opacity 0.2s ease;
+        }
+        .thinking-label.pulse {
+            animation: thinkingPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes thinkingSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes thinkingPulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        @keyframes thinkingFadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .typing-indicator {
+            position: static;
+            margin: 8px 0;
+        }
+        .typing-indicator.hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Auth Screen -->
+        <div id="auth-screen" class="auth-screen">
+            <div class="auth-box">
+                <div class="auth-logo">
+                    <img src="/favicon.ico" alt="YOLEST">
+                    <span>YOLEST</span>
+                </div>
+                <div id="auth-tabs" class="auth-tabs">
+                    <button class="auth-tab active" data-tab="login">Sign In</button>
+                    <button class="auth-tab" data-tab="register">Sign Up</button>
+                </div>
+                <div id="auth-error" class="auth-error hidden"></div>
+
+                <form id="login-form" class="auth-form">
+                    <div class="field">
+                        <label>Username</label>
+                        <input type="text" id="login-username" placeholder="Enter username" required>
+                    </div>
+                    <div class="field">
+                        <label>Password</label>
+                        <input type="password" id="login-password" placeholder="Enter password" required>
+                    </div>
+                    <button type="submit" class="auth-submit">Sign In</button>
+                </form>
+
+                <form id="register-form" class="auth-form hidden">
+                    <div class="field">
+                        <label>Full Name</label>
+                        <input type="text" id="reg-fullname" placeholder="Your full name" required>
+                    </div>
+                    <div class="field">
+                        <label>Username</label>
+                        <input type="text" id="reg-username" placeholder="Choose a username" required>
+                    </div>
+                    <div class="field">
+                        <label>Password</label>
+                        <input type="password" id="reg-password" placeholder="Min 6 characters" required>
+                    </div>
+                    <div class="field">
+                        <label>Confirm Password</label>
+                        <input type="password" id="reg-confirm" placeholder="Re-enter password" required>
+                    </div>
+                    <div class="checkbox-field">
+                        <input type="checkbox" id="reg-no-apikey" name="no_api_key">
+                        <label for="reg-no-apikey">I don't have an API key (local model only)</label>
+                    </div>
+                    <div class="field api-key-field" id="api-key-field">
+                        <label>API Key</label>
+                        <input type="text" id="reg-apikey" placeholder="Enter your API key">
+                        <div class="api-key-note">Enter your yolest-live API key to access cloud models (GPT-OSS, Gemma4).</div>
+                    </div>
+                    <button type="submit" class="auth-submit">Create Account</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main App -->
+        <div id="main-app" class="main-app hidden">
+            <!-- Sidebar -->
+            <aside id="sidebar" class="sidebar">
+                <div class="sidebar-top">
+                    <div class="sidebar-logo">
+                        <img src="/favicon.ico" alt="YOLEST">
+                        <span>YOLEST</span>
+                    </div>
+                    <button id="new-chat-btn" class="new-chat-btn" title="New chat">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="sidebar-search">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input type="text" id="chat-search" placeholder="Search chats...">
+                </div>
+                <div class="sidebar-scroll">
+                    <div id="chat-list" class="chat-list"></div>
+                </div>
+                <div class="sidebar-bottom">
+                    <button id="readme-btn" class="sidebar-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                        <span>README</span>
+                    </button>
+                    <button id="change-password-btn" class="sidebar-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <span>Change Password</span>
+                    </button>
+                    <button id="system-prompt-btn" class="sidebar-btn admin-only hidden">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                        </svg>
+                        <span>System Prompt</span>
+                    </button>
+                    <button id="debug-toggle-btn" class="sidebar-btn admin-only hidden">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="16 18 22 12 16 6"/>
+                            <polyline points="8 6 2 12 8 18"/>
+                        </svg>
+                        <span>Debug: <span id="debug-status">Off</span></span>
+                    </button>
+                    <button id="logout-btn" class="sidebar-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                            <polyline points="16 17 21 12 16 7"/>
+                            <line x1="21" y1="12" x2="9" y2="12"/>
+                        </svg>
+                        <span>Log Out</span>
+                    </button>
+                    <div class="user-row">
+                        <div class="user-avatar" id="user-avatar">Y</div>
+                        <span class="user-name" id="user-name">YOLEST User</span>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main -->
+            <main class="main">
+                <div id="chat-header" class="chat-header">
+                    <button id="toggle-sidebar" class="header-btn" title="Open sidebar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="9" y1="3" x2="9" y2="21"/>
+                        </svg>
+                    </button>
+                    <span id="current-chat-title" class="header-title">YOLEST</span>
+                    <div class="header-actions">
+                        <!-- Model Selector -->
+                        <div class="model-selector" id="model-selector-container">
+                            <span class="model-badge local" id="model-badge">Local</span>
+                            <select id="model-selector" class="model-dropdown">
+                                <option value="local">Local Model</option>
+                                <option value="cloud">GPT-OSS Cloud</option>
+                                <option value="local2">Local2 (Sentient)</option>
+                            </select>
+                        </div>
+                        <button id="export-btn" class="header-btn" title="Export chat">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="context-banner" class="context-banner hidden">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <span>Older messages were hidden to save space.</span>
+                </div>
+
+                <div id="messages-container" class="messages-container">
+                    <div id="welcome-screen" class="welcome-screen">
+                        <div class="welcome-logo">
+                            <img src="/favicon.ico" alt="YOLEST">
+                        </div>
+                        <h1 class="welcome-title">YOLEST</h1>
+                        <div class="suggestion-grid">
+                            <button class="suggestion-card" data-text="What is the weather in Tokyo?">
+                                <div class="suggestion-icon">&#x2600;</div>
+                                <div class="suggestion-text">What is the weather in Tokyo?</div>
+                            </button>
+                            <button class="suggestion-card" data-text="Search for quantum computing">
+                                <div class="suggestion-icon">&#x1F50D;</div>
+                                <div class="suggestion-text">Search for quantum computing</div>
+                            </button>
+                            <button class="suggestion-card" data-text="Calculate sqrt(144) * factorial(5)">
+                                <div class="suggestion-icon">&#x1F522;</div>
+                                <div class="suggestion-text">Calculate sqrt(144) * factorial(5)</div>
+                            </button>
+                            <button class="suggestion-card" data-text="Write a Python Fibonacci script">
+                                <div class="suggestion-icon">&#x1F40D;</div>
+                                <div class="suggestion-text">Write a Python Fibonacci script</div>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="messages" class="messages"></div>
+                    <div id="typing-indicator" class="typing-indicator hidden">
+                        <div class="thinking-container">
+                            <div class="thinking-spinner">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                                </svg>
+                            </div>
+                            <span id="thinking-label" class="thinking-label">Thinking...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <div class="input-box">
+                        <textarea
+                            id="message-input"
+                            class="message-input"
+                            placeholder="Message YOLEST..."
+                            rows="1"
+                        ></textarea>
+                        <button id="image-upload-btn" class="send-btn" type="button" title="Upload image">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                <circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                            </svg>
+                        </button>
+                        <input type="file" id="image-file-input" accept="image/*" style="display:none">
+                        <button id="send-btn" class="send-btn" disabled>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"/>
+                                <polygon points="22,2 15,22 11,13 2,9 22,2"/>
+                            </svg>
+                        </button>
+                        <button id="stop-btn" class="stop-btn hidden">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                <rect x="6" y="6" width="12" height="12" rx="2"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="input-footer">YOLEST can make mistakes. Always verify important information.</div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- README Modal -->
+    <div id="readme-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-panel modal-large">
+            <div class="modal-header">
+                <h3>README</h3>
+                <button id="readme-close" class="modal-close">&times;</button>
+            </div>
+            <div id="readme-content" class="readme-content"></div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="password-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-panel">
+            <h3>Change Password</h3>
+            <div id="password-error" class="auth-error hidden"></div>
+            <div class="field">
+                <label>Current Password</label>
+                <input type="password" id="current-password" placeholder="Current password" required>
+            </div>
+            <div class="field">
+                <label>New Password</label>
+                <input type="password" id="new-password" placeholder="Min 6 characters" required>
+            </div>
+            <div class="field">
+                <label>Confirm New Password</label>
+                <input type="password" id="confirm-new-password" placeholder="Re-enter new password" required>
+            </div>
+            <div class="modal-actions">
+                <button id="password-cancel" class="btn btn-ghost">Cancel</button>
+                <button id="password-confirm" class="btn btn-primary">Update Password</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Prompt Modal (Admin Only) -->
+    <div id="prompt-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-panel modal-large">
+            <div class="modal-header">
+                <h3>System Prompt</h3>
+                <button id="prompt-close" class="modal-close">&times;</button>
+            </div>
+            <div id="prompt-error" class="auth-error hidden"></div>
+            <textarea id="prompt-textarea" class="prompt-textarea"></textarea>
+            <div class="modal-actions">
+                <button id="prompt-cancel" class="btn btn-ghost">Cancel</button>
+                <button id="prompt-save" class="btn btn-primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
