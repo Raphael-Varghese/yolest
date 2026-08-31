@@ -4,9 +4,9 @@ An AI chat platform built by high school students at Stanton College Prep. YOLES
 
 ## DUE TO A BUG IN THE SCRIPT, YOU CANNOT USE THE SERVICE IF YOU DONT HAVE THE API KEY. SO ILL GIVE IT TO YOU(NOT A *REAL* API KEY, JUST A RANDOM SET OF NUMBERS AND LETTERS
 
-```api-key
 ```
-
+yolest-live:ocDZAfRjxQyiWn4rXuT7JPSLqYOdkaVN
+```
 ---
 
 ## What is YOLEST?
